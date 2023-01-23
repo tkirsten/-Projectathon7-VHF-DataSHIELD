@@ -1,0 +1,47 @@
+stages:
+  - build
+  - publish
+  - cleanup
+
+include:
+  - local: .docker/docker.yml
+
+.load:
+  variables:
+    DUP_STAGE: "load"
+    IMAGE_NAME: "${CI_REGISTRY}/${CI_PROJECT_NAME}"
+
+.remove:
+  variables:
+    DUP_STAGE: "clean-up"
+    IMAGE_NAME: "${CI_REGISTRY}/${CI_PROJECT_NAME}-clean-up"
+
+load::build:
+  stage: build
+  extends: [".load", ".build"]
+
+remove::build:
+  stage: build
+  extends: [".remove", ".build"]
+
+load::publish-image:
+  needs: ["load::test"]
+  stage: publish
+  extends: [".load", ".push"]
+
+remove::publish-image:
+  needs: ["remove::test"]
+  stage: publish
+  extends: [".remove", ".push"]
+
+load::cleanup:
+  needs: ["load::publish-image"]
+  when: always
+  stage: cleanup
+  extends: [".load", ".cleanup"]
+
+remove::cleanup:
+  needs: ["remove::publish-image"]
+  when: always
+  stage: cleanup
+  extends: [".remove", ".cleanup"]
